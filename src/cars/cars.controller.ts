@@ -3,40 +3,154 @@ import {
   Get,
   Post,
   Put,
-  Delete,
-  Body,
   Param,
+  Body,
+  NotFoundException,
+  UseGuards,
+  Request,
+  OnModuleInit,
+  Inject,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { GrpcMethod, ClientGrpc } from '@nestjs/microservices';
 
-import { CarDto } from './car.dto';
-import { CarsService } from './cars.service';
-import { Car } from './car.entity';
+import { CarsService as CarsDataService } from './cars.service';
+import { Car as CarEntity } from './car.entity';
+import { CarDto } from './dto/car.dto';
+import { Car } from './interfaces/car.interface';
+import { CarService } from './interfaces/car-service.interface';
+import { CarById } from './interfaces/car-by-id.interface';
+import { Observable } from 'rxjs';
+import { CarDetails } from './interfaces/car-details.interface';
 
 @Controller('cars')
-export class CarsController {
-  constructor(private readonly carsService: CarsService) {}
+export class CarsController implements OnModuleInit {
+  private carService: CarService;
+
+  constructor(
+    private readonly carsDataService: CarsDataService,
+    @Inject('CAR_PACKAGE') private readonly client: ClientGrpc,
+  ) {}
+
+  onModuleInit() {
+    this.carService = this.client.getService<CarService>('CarService');
+  }
+
   @Get()
-  async findAll(): Promise<Car[]> {
-    return this.carsService.findAll();
+  async listCars() {
+    return await this.carService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id): Promise<Car> {
-    return this.carsService.findOne(id);
+  async findById(@Param('id') id: number) {
+    const car = await this.carService.findOne({ id: id });
+
+    if (!car) {
+      throw new NotFoundException("This car doesn't exist");
+    }
+    return car;
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post()
-  create(@Body() carDto: CarDto): Promise<Car> {
-    return this.carsService.create(carDto);
+  async create(@Body() car: CarDto, @Request() req) {
+    const { id } = req.user;
+    const carDetails: CarDetails = {
+      ...car,
+      id,
+    };
+    return await this.carService.createCar(carDetails);
   }
 
-  // @Put(':id')
-  // update(@Body() updateCarDto: CarDto, @Param('id') id): Promise<Car> {
-  //   return this.carsService.update(id, updateCarDto);
-  // }
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':carId/buy')
+  async buy(@Param('carId') carId: number, @Request() req) {
+    const { balance } = req.user;
 
-  @Delete(':id')
-  remove(@Param('id') id): Promise<void> {
-    return this.carsService.remove(id);
+    const purchaseDetails = {
+      balance,
+      carId,
+    };
+
+    return await this.carService.buyCar(purchaseDetails);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Put(':carId')
+  async update(
+    @Param('carId') carId: number,
+    @Body() car: CarDto,
+    @Request() req,
+  ): Promise<Car> {
+    const { id } = req.user;
+    const carDetails: CarDetails = {
+      carId,
+      ...car,
+      id,
+    };
+
+    const {
+      numberOfAffectedRows,
+      updatedCar,
+    } = await this.carService.updateCar(carDetails);
+
+    if (numberOfAffectedRows === 0) {
+      throw new NotFoundException(
+        "This car doesn't exist or you are not authorized to modify it",
+      );
+    }
+
+    return updatedCar;
+  }
+
+  @GrpcMethod('CarService', 'FindAll')
+  async findAll(): Promise<Car[]> {
+    return await this.carsDataService.findAll();
+  }
+
+  @GrpcMethod('CarService')
+  async findOne(data: CarById): Promise<Car> {
+    return await this.carsDataService.findOne(data.id);
+  }
+
+  @GrpcMethod('CarService')
+  async createCar(data: CarDetails): Promise<Car> {
+    const userId = data.id;
+    const { make, model, features, vin, price, location } = data;
+    const carData = {
+      make,
+      model,
+      features,
+      vin,
+      price,
+      location,
+    };
+    return await this.carsDataService.create(carData, userId);
+  }
+
+  @GrpcMethod('CarService')
+  async updateCar(data: CarDetails) {
+    const userId = data.id;
+    const { make, model, features, vin, price, location } = data;
+    const carId = data.carId;
+    const carData = {
+      make,
+      model,
+      features,
+      vin,
+      price,
+      location,
+    };
+
+    return await this.carsDataService.update(carId, carData, userId);
+  }
+
+  @GrpcMethod('CarService')
+  async buyCar(data) {
+    const { balance, carId } = data;
+
+    const res = await this.carsDataService.buy(balance, carId);
+
+    return res;
   }
 }

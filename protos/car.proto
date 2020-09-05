@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package car;
+
+service CarService {
+    rpc Login (UserDetails) returns (UserData) {}
+    rpc Register (NewUser) returns (UserData) {}
+    rpc FindAll (Empty) returns (CarList) {}
+    rpc FindOne (CarById) returns (Car) {}
+    rpc CreateCar (CarDetails) returns (Car) {}
+    rpc UpdateCar (CarDetails) returns (UpdateCarOutput) {}
+    rpc TopUp (Amount) returns (User) {}
+    rpc BuyCar (PurchaseDetails) returns (Car) {}
+}
+
+message Empty {}
+
+message CarList {
+    repeated Car car = 1;
+}
+
+message CarById {
+    int32 id = 1;
+}
+
+message CarDetails {
+    string make = 1;
+    string model = 2;
+    string features = 3;
+    string vin = 4;
+    int32 price = 5;
+    string location = 6;
+    int32 id = 7;
+}
+
+message UpdateCarInput {
+    string carId = 1;
+    string make = 2;
+    string model = 3;
+    string features = 4;
+    string vin = 5;
+    int32 price = 6;
+    string location = 7;
+    int32 id = 8;
+}
+
+message UpdateCarOutput {
+    int32 numberOfAffectedRows = 1;
+    Car updatedCar = 2;
+}
+
+message Car {
+    int32 id = 1;
+    string make = 2;
+    string model = 3;
+    string features = 4;
+    string vin = 5;
+    int32 price = 6;
+    string location = 7;
+    int32 userId = 8;
+    string createdAt = 9;
+    string updatedAt = 10;
+}
+
+message UserDetails {
+    int32 id = 1;
+    string name = 2;
+    string email = 3;
+    string createdAt = 4;
+    string updatedAt = 5;
+}
+
+message User {
+    int32 id = 1;
+    string name = 2;
+    string email = 3;
+    int32 balance = 4;
+    string currency = 5;
+    string createdAt = 6;
+    string updatedAt = 7;
+}
+
+message UserData {
+    User user = 1;
+    string token = 2;
+}
+
+message NewUser {
+    string name = 1;
+    string email = 2;
+    string password = 3;
+}
+
+message Amount {
+    int32 id = 3;
+    int32 balance = 1;
+    string currency = 2;
+}
+
+message PurchaseDetails {
+    int32 balance = 1;
+    int32 carId = 2;
+}

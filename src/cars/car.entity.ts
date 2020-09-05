@@ -1,43 +1,52 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo } from 'sequelize-typescript';
 
-@Entity()
-export class Car {
-  @PrimaryGeneratedColumn()
-  id: number;
+import { User } from '../users/user.entity';
 
-  @Column({
-    type: 'varchar',
-    length: 50,
-  })
-  make: string;
+// make, model, features, vin, price and location
 
-  @Column({
-    type: 'varchar',
-    length: 50,
-  })
-  model: string;
+@Table
+export class Car extends Model<Car> {
+    @Column({
+        type: DataType.STRING,
+        allowNull: false,
+    })
+    make: string;
 
-  @Column({
-    type: 'varchar',
-    length: 100,
-  })
-  features: string;
+    @Column({
+        type: DataType.STRING,
+        allowNull: false,
+    })
+    model: string;
 
-  @Column({
-    type: 'varchar',
-    length: 20,
-    unique: true,
-  })
-  vin: string;
+    @Column({
+        type: DataType.TEXT,
+    })
+    features: string;
 
-  @Column({
-    type: 'int',
-  })
-  price: number;
+    @Column({
+        type: DataType.STRING,
+        allowNull: false,
+    })
+    vin: string;
 
-  @Column({
-    type: 'varchar',
-    length: 80,
-  })
-  location: string;
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    price: number;
+
+    @Column({
+        type: DataType.STRING,
+    })
+    location: string;
+
+    @ForeignKey(() => User)
+    @Column({
+        type: DataType.INTEGER,
+        allowNull: false,
+    })
+    userId: number;
+
+    @BelongsTo(() => User)
+    user: User;
 }
